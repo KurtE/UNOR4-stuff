@@ -1,0 +1,2 @@
+compiler.c.elf.extra_flags=-DBDELAY=150
+compiler.cpp.extra_flags=-DBDELAY=150
