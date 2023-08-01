@@ -12,12 +12,34 @@ UART _UART2_(18, 19);
 #define SPD 115200
 int loop_count = 0;
 
+#define BUFFER_SIZE 80
+
+class BufferInfoClass {
+public:
+  BufferInfoClass() {
+    clear();
+  }
+  char buffer[BUFFER_SIZE];
+  uint8_t cb_buffer;
+  uint8_t cb_copy[BUFFER_SIZE];
+  uint8_t cb_copy_cnt;
+  void clear() {
+    cb_buffer = 0;
+    cb_copy_cnt = 0;
+  }
+};
+
+BufferInfoClass buffers[3];
+uint32_t millis_last_input = 0;
+
 void setup() {
-  pinMode(2, OUTPUT);
   pinMode(3, OUTPUT);
   pinMode(4, OUTPUT);
   pinMode(5, OUTPUT);
-  pinMode(13, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
+  pinMode(LED_BUILTIN, OUTPUT);
   while (!Serial && millis() < 4000)
     ;
   Serial.begin(115200);
@@ -31,85 +53,98 @@ void setup() {
 }
 
 #define MIN(a, b) ((a) <= (b) ? (a) : (b))
-#define BUFFER_SIZE 80
-char buffer[BUFFER_SIZE];
-char buffer_Serial[BUFFER_SIZE];
-char buffer_Serial1[BUFFER_SIZE];
-char buffer_SerialX[BUFFER_SIZE];
 
-uint8_t cb_buffer_Serial = 0;
-uint8_t cb_buffer_Serial1 = 0;
-uint8_t cb_buffer_SerialX = 0;
 
-uint32_t millis_last_input = 0;
-
-void CopyFromTo(Stream &SerialF, Stream &SerialT, char *buffer, uint8_t &buffer_index) {
+void CopyFromTo(Stream &SerialF, Stream &SerialT, uint8_t buffer_index) {
   int available;
   int available_for_write;
   int cb;
+  BufferInfoClass *buf = &buffers[buffer_index];
   if ((available = SerialF.available()) != 0) {
     available_for_write = SerialT.availableForWrite();
-    cb = MIN(MIN(available, available_for_write), (int)sizeof(buffer));
+    cb = MIN(MIN(available, available_for_write), BUFFER_SIZE);
     if (cb) {
-      SerialF.readBytes(&buffer[buffer_index], cb);
-      SerialT.write(&buffer[buffer_index], cb);
-      buffer_index += cb;
+      SerialF.readBytes(&buf->buffer[buf->cb_buffer], cb);
+      SerialT.write(&buf->buffer[buf->cb_buffer], cb);
+      buf->cb_buffer += cb;
+      buf->cb_copy[buf->cb_copy_cnt] = cb;
+      buf->cb_copy_cnt++;
       millis_last_input = millis();
     }
   }
 }
 
 void memory_dump(const char *pb, uint8_t cb) {
+  const char* pbA = pb;
+  uint8_t cbA = cb;
+
   Serial.print("\t");
-  for (uint8_t i = 0; i < cb; i++ ) {
+  for (uint8_t i = 0; i < cb; i++) {
     if (*pb < 0x10) Serial.write('0');
     Serial.print(*pb, HEX);
     Serial.print(" ");
     pb++;
   }
+  
+  Serial.print("\n\t ");
+  for (uint8_t i = 0; i < cbA; i++) {
+    if (*pbA >= ' ')  Serial.write(*pbA);
+    else Serial.write(' ');
+    Serial.print("  ");
+    pbA++;
+  }
   Serial.println();
 }
 
+void print_buffer_header(uint8_t index) {
+  BufferInfoClass *buf = &buffers[index];
+  Serial.print("  ");
+  Serial.print(buf->cb_buffer, DEC);
+  Serial.print(" (");
+  for (uint8_t i = 0; i < buf->cb_copy_cnt; i++) {
+    if (i != 0) Serial.print(",");
+    Serial.print(buf->cb_copy[i], DEC);
+  }
+  Serial.print(")");
+}
 
-void CompareBuffers(const char *buff1, uint8_t cb1, const char *buff2, uint8_t cb2) {
-  if (cb1 == cb2) {
-    if (memcmp(buff1, buff2, cb1) == 0) {
-      Serial.println("** Match **");
+void CompareBuffers(uint8_t index1, uint8_t index2) {
+  if (buffers[index1].cb_buffer == buffers[index2].cb_buffer) {
+    if (memcmp(buffers[index1].buffer, buffers[index2].buffer, buffers[index1].cb_buffer) == 0) {
+      Serial.println(" ** Match **");
       return;
     } else {
-      Serial.println("** different **");
+      Serial.println(" ** different **");
     }
   } else {
-    Serial.println("** counts different **");
+    Serial.println(" ** counts different **");
   }
-  memory_dump(buff1, cb1);
-  memory_dump(buff2, cb2);
+  memory_dump(buffers[index1].buffer, buffers[index1].cb_buffer);
+  memory_dump(buffers[index2].buffer, buffers[index2].cb_buffer);
 }
 
 void loop() {
-  CopyFromTo(Serial, Serial1, buffer_Serial, cb_buffer_Serial);
-  CopyFromTo(Serial1, Serial, buffer_Serial1, cb_buffer_Serial1);
-  CopyFromTo(SerialX, SerialX, buffer_SerialX, cb_buffer_SerialX);
+  CopyFromTo(Serial, Serial1, 0);
+  CopyFromTo(Serial1, Serial, 1);
+  CopyFromTo(SerialX, SerialX, 2);
 
   // now see if we should compare the data yet or not
-  if (cb_buffer_Serial && ((millis() - millis_last_input) > 100)) {
+  if (buffers[0].cb_buffer && ((millis() - millis_last_input) > 100)) {
     Serial.println("Check buffers: ");
 
-    Serial.print("  ");
-    Serial.println(cb_buffer_Serial, DEC);
-    Serial.print("  ");
-    Serial.print(cb_buffer_Serial1, DEC);
-    Serial.print(" ");
-    CompareBuffers(buffer_Serial, cb_buffer_Serial, buffer_Serial1, cb_buffer_Serial1);
-    Serial.print("  ");
-    Serial.println(cb_buffer_SerialX, DEC);
-    CompareBuffers(buffer_Serial, cb_buffer_Serial, buffer_SerialX, cb_buffer_SerialX);
+    print_buffer_header(0);
+    Serial.println();
+    print_buffer_header(1);
+    CompareBuffers(0, 1);
 
-    cb_buffer_Serial = 0;
-    cb_buffer_Serial1 = 0;
-    cb_buffer_SerialX = 0;
+    print_buffer_header(2);
+    CompareBuffers(0, 2);
+
+    buffers[0].clear();
+    buffers[1].clear();
+    buffers[2].clear();
   }
-  digitalWrite(5, HIGH);
+  digitalWrite(LED_BUILTIN, HIGH);
   delayMicroseconds(100);  // give time form things to propagate
-  digitalWrite(5, LOW);
+  digitalWrite(LED_BUILTIN, LOW);
 }

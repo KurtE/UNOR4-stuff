@@ -41,20 +41,12 @@ void setup() {
   DEBUG_SERIAL.begin(115200);   //set debugging port baudrate to 115200bps
   while(!DEBUG_SERIAL);         //Wait until the serial port is opened
 #if 1
-  pinMode(A2, OUTPUT);
-  pinMode(A3, OUTPUT);
-  pinMode(A4, OUTPUT);
-  pinMode(A5, OUTPUT);
-  for (int i = 0; i < 5; i++) {
-    digitalWrite(A2, HIGH);
-    digitalWrite(A3, HIGH);
-    digitalWrite(A4, HIGH);
-    digitalWrite(A5, HIGH);
-    digitalWrite(A5, LOW);
-    digitalWrite(A4, LOW);
-    digitalWrite(A3, LOW);
-    digitalWrite(A2, LOW);
-  }
+    pinMode(3, OUTPUT);
+  pinMode(4, OUTPUT);
+  pinMode(5, OUTPUT);
+  pinMode(6, OUTPUT);
+  pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
 #endif
 }
 

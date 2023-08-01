@@ -30,6 +30,7 @@ void setup()
   pinMode(5, OUTPUT);
   pinMode(6, OUTPUT);
   pinMode(7, OUTPUT);
+  pinMode(8, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(reset_pin, HIGH);
   pinMode(reset_pin, OUTPUT);
