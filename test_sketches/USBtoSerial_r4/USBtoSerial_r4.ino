@@ -23,7 +23,7 @@ UART _UART2_(18, 19);
 #endif
 
 
-#define HWSERIAL Serial1
+#define HWSERIAL SerialX
 
 unsigned long baud = 115200;
 const int reset_pin = 4;

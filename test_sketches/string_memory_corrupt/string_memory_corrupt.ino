@@ -50,6 +50,8 @@ void setup() {
   MemoryHexDump(Serial, &_Heap_Begin, 16, false);
   extern uint8_t heap_data_save[];
   MemoryHexDump(Serial, heap_data_save, 16, false);
+  extern uint8_t heap_data_save2[];
+  MemoryHexDump(Serial, heap_data_save2, 16, false);
 
 
 
