@@ -115,13 +115,13 @@ void loop() {
   }
 
 #ifdef ARDUINO_UNOR4_WIFI
-  static uint8_t matrix_pin = 0;
+  static uint8_t matrix_led = 0;
   static uint32_t matrix_change_time = 0;
   if ((millis() - matrix_change_time) > 250) {
-    matrix.off(matrix_pin);
-    matrix_pin++;
-    if (matrix_pin == 96) matrix_pin = 0;
-    matrix.on(matrix_pin);
+    matrix.off(matrix_led);
+    matrix_led++;
+    if (matrix_led == 96) matrix_led = 0;
+    matrix.on(matrix_led);
     matrix_change_time = millis();
     if (button.hasBeenClicked()) {
       button.clearEventBits();
