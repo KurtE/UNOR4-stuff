@@ -44,7 +44,7 @@ void setup() {
   }
   #else
   // configure the button pin as input
-  pinMode(buttonPin, INPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
   #endif
 
   // initialize the Bluetooth® Low Energy hardware
