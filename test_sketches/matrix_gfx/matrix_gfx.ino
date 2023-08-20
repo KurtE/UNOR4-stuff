@@ -1,4 +1,4 @@
-#include "arduino_r4wifi_matrix_gfx.h"
+#include <arduino_r4wifi_matrix_gfx.h>
 #include <Fonts/FreeMono9pt7b.h>
 ArduinoLEDMatrixGFX display;
 
