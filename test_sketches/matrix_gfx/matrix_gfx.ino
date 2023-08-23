@@ -1,25 +1,73 @@
 #include <arduino_r4wifi_matrix_gfx.h>
 #include <Fonts/FreeMono9pt7b.h>
+//#include <Fonts/ARIAL6pt7b.h>
 ArduinoLEDMatrixGFX display;
+const float on_percents[] = { 100.0, 75.0, 50.0, 25.0, 12.5, 25.0, 50.0, 75.0 };
 
 void setup() {
   while (!Serial && millis() < 5000)
     ;
   Serial.begin(9600);
-  Serial.println("Matrix GFX class test program");
+  delay(1000);
+  Serial.println("\n\nMatrix GFX class test program");
+  pinMode(3, OUTPUT);
+  pinMode(4, OUTPUT);
 
-  display.begin();
+#ifdef MATRIX_INT_PER_PIXEL
+  display.begin(1);
+#else
+  display.begin(10);
+#endif
 
   testPixels();  // Draw many lines
+
+  Serial.print("Period Raw(100):"),
+    Serial.println(display.s_ledTimer.get_period_raw(), DEC);
+
   testdrawline();
-  testdrawrect();  // Draw rectangles (outlines)
+
+  testdrawrect(MATRIX_WHITE);  // Draw rectangles (outlines)
+#ifdef MATRIX_INT_PER_PIXEL
+
+  testdrawrect(MATRIX_LIGHT);  // Draw rectangles (outlines)
+  testdrawrect(MATRIX_DARK);   // Draw rectangles (outlines)
+  testdrawrect(MATRIX_LIGHT);  // Draw rectangles (outlines)
+  testdrawrect(MATRIX_WHITE);  // Draw rectangles (outlines)
+
+#else
+  for (uint8_t i = 0; i < (sizeof(on_percents) / sizeof(on_percents[0])); i++) {
+    display.setPulseOnPercent(on_percents[i]);
+    delay(500);
+    Serial.print("On Percent: ");
+    Serial.println(on_percents[i], 2);
+    Serial.print("\tPeriod: ");
+    Serial.print(display.s_rawPeriod);
+    Serial.print(" On:");
+    Serial.print(display.s_rawPeriodOn);
+    Serial.print(" Off:");
+    Serial.println(display.s_rawPeriodOff);
+  }
+  display.setPulseOnPercent(100.0);
+#endif
+
   testfillrect();  // Draw rectangles (filled)
   testdrawchar();
-  //  testdrawfontchar();
+  testdrawfontchar();
 }
 
+uint8_t loop_count = 0;
 void loop() {
+  loop_count++;
+  display.setPulseOnPercent(on_percents[loop_count & 0x7]);
+  Serial.print("Loop: ");
+  Serial.println(on_percents[loop_count & 0x7], 2);
   testcanvasscrolltext();
+  Serial.print("\tPeriod: ");
+  Serial.print(display.s_rawPeriod);
+  Serial.print(" On:");
+  Serial.print(display.s_rawPeriodOn);
+  Serial.print(" Off:");
+  Serial.println(display.s_rawPeriodOff);
 }
 
 void testPixels() {
@@ -93,29 +141,34 @@ void testdrawline() {
   delay(2000);  // Pause for 2 seconds
 }
 
-void testdrawrect(void) {
+void testdrawrect(uint8_t color) {
   display.clearDisplay();
+  digitalWriteFast(4, HIGH);
 
   for (int16_t i = 0; i < display.height() / 2; i += 2) {
-    display.drawRect(i, i, display.width() - 2 * i, display.height() - 2 * i, MATRIX_WHITE);
+    display.drawRect(i, i, display.width() - 2 * i, display.height() - 2 * i, color);
     display.display();  // Update screen with each newly-drawn rectangle
     delay(500);
   }
 
   delay(2000);
+  digitalWriteFast(4, LOW);
 }
 
 void testfillrect(void) {
   display.clearDisplay();
-
+  uint8_t color = MATRIX_WHITE;
+  digitalWriteFast(4, HIGH);
   for (int16_t i = 0; i < display.height() / 2; i += 3) {
     // The INVERSE color is used so rectangles alternate white/black
-    display.fillRect(i, i, display.width() - i * 2, display.height() - i * 2, MATRIX_INVERSE);
+    display.fillRect(i, i, display.width() - i * 2, display.height() - i * 2, color);
     display.display();  // Update screen with each newly-drawn rectangle
+    color = (color == MATRIX_WHITE) ? MATRIX_DARK : MATRIX_WHITE;
     delay(1);
   }
 
   delay(2000);
+  digitalWriteFast(4, LOW);
 }
 
 void testdrawchar(void) {
@@ -159,7 +212,7 @@ void testdrawfontchar(void) {
   display.setFont();
 }
 
-GFXcanvas1 canvas(80, 16);  // 1-bit, 80x8 pixels
+GFXcanvas8 canvas(80, 16);  // 1-bit, 80x8 pixels
 
 
 void testcanvasscrolltext() {
@@ -169,6 +222,7 @@ void testcanvasscrolltext() {
   canvas.setTextColor(MATRIX_WHITE);  // Draw white text
   canvas.print("Scroll Text");
   uint8_t canvas_max_x = canvas.getCursorX();
+  canvas.setTextColor(MATRIX_DARK);  // Draw white text
   canvas.print("\nSecond line");
   uint8_t cx2 = canvas.getCursorX();
   if (cx2 > canvas_max_x) canvas_max_x = cx2;
@@ -188,8 +242,8 @@ void testcanvasscrolltext() {
   int x_offset = 0;
   int y_offset = 0;
 
-    // go out in x direction
-    for (x_offset = 0; x_offset < (canvas_max_x - display.width()); x_offset++) {
+  // go out in x direction
+  for (x_offset = 0; x_offset < (canvas_max_x - display.width()); x_offset++) {
     display.clearDisplay();
     writeOffsetRect(canvas, x_offset, y_offset);
     display.display();
@@ -220,12 +274,13 @@ void testcanvasscrolltext() {
   }
 }
 
-void writeOffsetRect(GFXcanvas1 &canvas, int x_offset, int y_offset) {
+void writeOffsetRect(GFXcanvas8 &canvas, int x_offset, int y_offset) {
   display.clearDisplay();
   for (int y = 0; y < 8; y++) {
     for (int x = 0; x < 12; x++) {
-      if (canvas.getPixel(x + x_offset, y + y_offset)) {
-        display.drawPixel(x, y, MATRIX_WHITE);
+      uint8_t color;
+      if ((color = canvas.getPixel(x + x_offset, y + y_offset))) {
+        display.drawPixel(x, y, color);
       }
     }
   }
