@@ -1,6 +1,9 @@
 /*
  *    arduino_r4wifi_matrix_gfx.h - A library for controling the
- *    lec matrix on the Arduino UNO R4 WIFI boards.
+ *    led matrix on the Arduino UNO R4 WIFI boards.
+ *
+ *    Part of this code is based on the Arduino_LED_Matrix.h code that is part of the
+ *    Arduino UNO R4 code base
  * 
  *    Permission is hereby granted, free of charge, to any person
  *    obtaining a copy of this software and associated documentation
@@ -26,23 +29,24 @@
 
 #ifndef _arduino_r4wifi_matrix_gfx_h_
 #define _arduino_r4wifi_matrix_gfx_h_
-#include <Arduino_LED_Matrix.h>
+#include "FspTimer.h"
+#include "UNOR4_digitalWriteFast.h"
 #include <Adafruit_GFX.h>
 
-extern ArduinoLEDMatrix matrix;
+#define MATRIX_BLACK  0   ///< Draw 'off' pixels
+#define MATRIX_DARK   0x1
+#define MATRIX_LIGHT  0x2
+#define MATRIX_WHITE  0x3   ///< Draw 'on' pixels
 
-#define MATRIX_BLACK 0   ///< Draw 'off' pixels
-#define MATRIX_WHITE 1   ///< Draw 'on' pixels
-#define MATRIX_INVERSE 2 ///< Invert pixels
 #define MATRIX_WIDTH 12
 #define MATRIX_HEIGHT 8
 
 #ifndef NO_ADAFRUIT_COLOR_COMPATIBILITY
 #define BLACK MATRIX_BLACK     ///< Draw 'off' pixels
 #define WHITE MATRIX_WHITE     ///< Draw 'on' pixels
-#define INVERSE MATRIX_INVERSE ///< Invert pixels
 #endif
 
+#define MATRIX_INT_PER_PIXEL
 
 class ArduinoLEDMatrixGFX : public Adafruit_GFX {
   public:
@@ -53,7 +57,7 @@ class ArduinoLEDMatrixGFX : public Adafruit_GFX {
     ~ArduinoLEDMatrixGFX(); 
 
     // begin start up the underlying matrix object
-    bool begin();
+    bool begin(uint32_t frames_per_second = 10);
 
     // Clears the frame buffer;
     void clearDisplay();
@@ -70,10 +74,43 @@ class ArduinoLEDMatrixGFX : public Adafruit_GFX {
 
     virtual void drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color);
     virtual void drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
-    uint32_t _frame_buffer[3]; // 96 bits.
+
 
     void hline(int16_t x, int16_t y, int16_t w, uint16_t color);
     void vline(int16_t x, int16_t y, int16_t h, uint16_t color);
+
+    void setPulseOnPercent(float on_percent) {
+        _new_period_on_percent = on_percent; 
+        digitalToggleFast(4);
+    }
+
+    static inline void updateClockPeriod(uint32_t period);
+
+
+    inline void pixel(uint8_t pixel_index, uint16_t color);
+    static uint16_t pixelDisp(uint8_t pixel_index);
+
+    // Some of this should be protectdd or private:
+    enum {NUM_LEDS=96, BITS_PER_PIXEL=2, COLOR_MASK = 0x3};
+
+    uint32_t _pulseWidth;
+    float _new_period_on_percent;
+
+    // Interrupt callback
+    static void led_timer_callback(timer_callback_args_t *arg);
+    uint8_t __attribute__((aligned)) _frame_buffer[(NUM_LEDS * BITS_PER_PIXEL) / 8];
+
+    static uint8_t __attribute__((aligned)) s_framebuffer[(NUM_LEDS * BITS_PER_PIXEL) / 8];
+    static uint8_t s_high_pin_index;
+    static bool s_turn_off_pulse;
+
+    static FspTimer s_ledTimer;
+    static uint32_t s_rawPeriod;
+    static uint32_t s_rawPeriod1;
+    static uint32_t s_rawPeriod2;
+    static volatile uint32_t s_rawPeriodOn;
+    static volatile uint32_t s_rawPeriodOff;
+    static R_GPT0_Type *s_pgpt0;
 };
 
 #endif
