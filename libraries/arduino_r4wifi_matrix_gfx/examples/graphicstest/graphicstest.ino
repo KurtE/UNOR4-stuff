@@ -1,5 +1,6 @@
 #include <arduino_r4wifi_matrix_gfx.h>
 #include <Fonts/FreeMono9pt7b.h>
+#include "font_Arial.h";
 //#include <Fonts/ARIAL6pt7b.h>
 ArduinoLEDMatrixGFX display;
 const float on_percents[] = { 100.0, 75.0, 50.0, 25.0, 12.5, 25.0, 50.0, 75.0 };
@@ -196,20 +197,22 @@ void testdrawchar(void) {
 void testdrawfontchar(void) {
   display.clearDisplay();
 
-  display.setFont(&FreeMono9pt7b);
-  display.setTextSize(1);              // Normal 1:1 pixel scale
+//  display.setFont(&FreeMono9pt7b);
+ // display.setTextSize(1);              // Normal 1:1 pixel scale
+  display.setILIFont(&Arial_8);
   display.setTextColor(MATRIX_WHITE);  // Draw white text
 
   // Not all the characters will fit on the display. This is normal.
   // Library will draw what it can and the rest will be clipped.
   for (int16_t i = ' '; i < '~'; i++) {
     display.clearDisplay();
-    display.setCursor(0, 7);  // Start at top-left corner
+    display.setCursor(0, 0);  // Start at top-left corner
     display.write(i);
     display.display();
     delay(125);
   }
-  display.setFont();
+  display.setILIFont(nullptr);
+  //display.setFont();
 }
 
 GFXcanvas8 canvas(80, 16);  // 1-bit, 80x8 pixels

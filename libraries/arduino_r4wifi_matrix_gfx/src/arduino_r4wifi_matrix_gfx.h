@@ -32,7 +32,7 @@
 #include "FspTimer.h"
 #include "UNOR4_digitalWriteFast.h"
 #include <Adafruit_GFX.h>
-
+#include "ILI9341_fonts.h"
 #define MATRIX_BLACK  0   ///< Draw 'off' pixels
 #define MATRIX_DARK   0x1
 #define MATRIX_LIGHT  0x2
@@ -79,6 +79,18 @@ class ArduinoLEDMatrixGFX : public Adafruit_GFX {
     void hline(int16_t x, int16_t y, int16_t w, uint16_t color);
     void vline(int16_t x, int16_t y, int16_t h, uint16_t color);
 
+
+    // Experiment use ILI Fonts
+    void setILIFont(const ILI9341_t3_font_t *f) {
+      ilifont = f;
+    }
+
+    // See if we can overwrite the print write method
+    virtual size_t write(uint8_t);
+    void drawFontBits(uint32_t bits, uint32_t numbits, uint32_t x, uint32_t y, uint32_t repeat);
+
+
+
     void setPulseOnPercent(float on_percent) {
         _new_period_on_percent = on_percent; 
         digitalToggleFast(4);
@@ -111,6 +123,9 @@ class ArduinoLEDMatrixGFX : public Adafruit_GFX {
     static volatile uint32_t s_rawPeriodOn;
     static volatile uint32_t s_rawPeriodOff;
     static R_GPT0_Type *s_pgpt0;
+
+    // Font stuff
+    const ILI9341_t3_font_t *ilifont = nullptr;
 };
 
 #endif
