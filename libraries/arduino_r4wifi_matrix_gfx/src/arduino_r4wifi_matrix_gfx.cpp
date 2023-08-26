@@ -25,6 +25,12 @@
 */
 #include "arduino_r4wifi_matrix_gfx.h"
 
+//#define DEBUG_PRINT
+#ifdef DEBUG_PRINT
+#define DBGPrintf printf
+#else
+inline void DBGPrintf(...) {}
+#endif
 #define NUM_LEDS    96
 
 static const int pin_zero_index = 28;
@@ -150,7 +156,7 @@ void ArduinoLEDMatrixGFX::display() {
 }
 
 // virtual overrides - start simple
-static inline void swap(int16_t x, int16_t y) {
+static inline void swap(int16_t &x, int16_t &y) {
   int16_t t = x;
   x = y;
   y = t;
@@ -206,6 +212,7 @@ void ArduinoLEDMatrixGFX::clearDisplay() {
 }
 
 void ArduinoLEDMatrixGFX::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) {
+  DBGPrintf("\t\t\tFHline(%d, %d, %d, %x ->", x, y, w, textcolor);
   bool swapped = false;
   switch (getRotation()) {
     case 1:
@@ -229,16 +236,17 @@ void ArduinoLEDMatrixGFX::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_
 }
 
 void ArduinoLEDMatrixGFX::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) {
+  DBGPrintf("\t\t\tFVline(%d, %d, %d, %x ->", x, y, h, textcolor);
   bool swapped = false;
   switch (getRotation()) {
     case 1:
       swap(x, y);
       swapped = true;
-      x = MATRIX_WIDTH - x - 1;
+      x = MATRIX_WIDTH - (x + h);
       break;
     case 2:
       x = MATRIX_WIDTH - x - 1;
-      y = MATRIX_HEIGHT - y - 1;
+      y = MATRIX_HEIGHT - (y+h);
       break;
     case 3:
       swap(x, y);
@@ -254,6 +262,8 @@ void ArduinoLEDMatrixGFX::drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_
 
 
 void ArduinoLEDMatrixGFX::hline(int16_t x, int16_t y, int16_t w, uint16_t color) {
+  DBGPrintf("hline(%d, %d, %d, %x\n", x, y, w, textcolor);
+
   if ((y < 0 ) || (y >= MATRIX_HEIGHT)) return;
   int16_t x_end = x + w;
   if (x < 0) x = 0;
@@ -268,6 +278,7 @@ void ArduinoLEDMatrixGFX::hline(int16_t x, int16_t y, int16_t w, uint16_t color)
 }
 
 void ArduinoLEDMatrixGFX::vline(int16_t x, int16_t y, int16_t h, uint16_t color) {
+  DBGPrintf("vline(%d, %d, %d, %x\n", x, y, h, textcolor);
   if ((x < 0 ) || (x >= MATRIX_WIDTH)) return;
   int16_t y_end = y + h;
   if (y < 0) y = 0;
@@ -336,7 +347,7 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
     uint32_t bitoffset;
   const uint8_t *data;
 
-  //Serial.printf("drawFontChar %d\n", c);
+  DBGPrintf("drawFontChar %d\n", c);
 
   if (c >= ilifont->index1_first && c <= ilifont->index1_last) {
     bitoffset = c - ilifont->index1_first;
@@ -347,7 +358,7 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
   } else {
     return 0;
   }
-  //Serial.printf("  index =  %d\n", fetchbits_unsigned(ilifont->index, bitoffset, ilifont->bits_index));
+  DBGPrintf("  index =  %d\n", fetchbits_unsigned(ilifont->index, bitoffset, ilifont->bits_index));
   data = ilifont->data + fetchbits_unsigned(ilifont->index, bitoffset, ilifont->bits_index);
 
   uint32_t encoding = fetchbits_unsigned(data, 0, 3);
@@ -356,19 +367,19 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
   bitoffset = ilifont->bits_width + 3;
   uint32_t height = fetchbits_unsigned(data, bitoffset, ilifont->bits_height);
   bitoffset += ilifont->bits_height;
-  //Serial.printf("  size =   %d,%d\n", width, height);
+  DBGPrintf("  size =   %d,%d\n", width, height);
 
   int32_t xoffset = fetchbits_signed(data, bitoffset, ilifont->bits_xoffset);
   bitoffset += ilifont->bits_xoffset;
   int32_t yoffset = fetchbits_signed(data, bitoffset, ilifont->bits_yoffset);
   bitoffset += ilifont->bits_yoffset;
-  //Serial.printf("  offset = %d,%d\n", xoffset, yoffset);
+  DBGPrintf("  offset = %d,%d\n", xoffset, yoffset);
 
   uint32_t delta = fetchbits_unsigned(data, bitoffset, ilifont->bits_delta);
   bitoffset += ilifont->bits_delta;
-  //Serial.printf("  delta =  %d\n", delta);
+  DBGPrintf("  delta =  %d\n", delta);
 
-  //Serial.printf("  cursor = %d,%d\n", cursor_x, cursor_y);
+  DBGPrintf("  cursor = %d,%d\n", cursor_x, cursor_y);
 
   // horizontally, we draw every pixel, or none at all
   if (cursor_x < 0) cursor_x = 0;
@@ -378,31 +389,33 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
     origin_x = 0;
   }
   if (origin_x + (int)width > _width) {
-    if (!wrap) return 1;
-    origin_x = 0;
-    if (xoffset >= 0) {
-      cursor_x = 0;
-    } else {
-      cursor_x = -xoffset;
+    // I am going to allow partial characters to be output
+    if (wrap) {
+      origin_x = 0;
+      if (xoffset >= 0) {
+        cursor_x = 0;
+      } else {
+        cursor_x = -xoffset;
+      }
+      cursor_y += ilifont->line_space;
     }
-    cursor_y += ilifont->line_space;
   }
-  if (cursor_y >= _height) return 1;
+  //if (cursor_y >= _height) return 1;
   cursor_x += delta;
 
   // vertically, the top and/or bottom can be clipped
   int32_t origin_y = cursor_y + ilifont->cap_height - height - yoffset;
-  //Serial.printf("  origin = %d,%d\n", origin_x, origin_y);
+  DBGPrintf("  origin = %d,%d\n", origin_x, origin_y);
 
   // TODO: compute top skip and number of lines
   int32_t linecount = height;
-  //uint32_t loopcount = 0;
+  uint32_t loopcount = 0;
   uint32_t y = origin_y;
   while (linecount) {
-    //Serial.printf("    linecount = %d\n", linecount);
+    DBGPrintf("    linecount = %d\n", linecount);
     uint32_t b = fetchbit(data, bitoffset++);
     if (b == 0) {
-      //Serial.println("    single line");
+      DBGPrintf("    single line\n");
       uint32_t x = 0;
       do {
         uint32_t xsize = width - x;
@@ -421,7 +434,7 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
       do {
         uint32_t xsize = width - x;
         if (xsize > 32) xsize = 32;
-        //Serial.printf("    multi line %d\n", n);
+        //DBGPrintf("    multi line %d\n", n);
         uint32_t bits = fetchbits_unsigned(data, bitoffset, xsize);
         drawFontBits(bits, xsize, origin_x + x, y, n);
         bitoffset += xsize;
@@ -456,6 +469,7 @@ void ArduinoLEDMatrixGFX::drawFontBits(uint32_t bits, uint32_t numbits, uint32_t
     bits <<= w;
     bits = ~bits; // invert back to original polarity
     if (w > 0) {
+      DBGPrintf("\t\tfillRect(%u, %u, %u, %u, %x\n", x, y, w, repeat, textcolor);
       fillRect(x, y, w, repeat, textcolor);
       x += w;
     }
