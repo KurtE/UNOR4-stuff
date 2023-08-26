@@ -405,6 +405,7 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
 
   // vertically, the top and/or bottom can be clipped
   int32_t origin_y = cursor_y + ilifont->cap_height - height - yoffset;
+  DBGPrintf("  cy:%d cap:%d height:%d yof:%d\n", cursor_y, ilifont->cap_height, height, yoffset);
   DBGPrintf("  origin = %d,%d\n", origin_x, origin_y);
 
   // TODO: compute top skip and number of lines
@@ -434,7 +435,7 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
       do {
         uint32_t xsize = width - x;
         if (xsize > 32) xsize = 32;
-        //DBGPrintf("    multi line %d\n", n);
+        DBGPrintf("    multi line %d\n", n);
         uint32_t bits = fetchbits_unsigned(data, bitoffset, xsize);
         drawFontBits(bits, xsize, origin_x + x, y, n);
         bitoffset += xsize;

@@ -1,7 +1,9 @@
 #include <arduino_r4wifi_matrix_gfx.h>
 #include <Fonts/FreeMono9pt7b.h>
-#include "font_Arial.h";
-//#include <Fonts/ARIAL6pt7b.h>
+#include "font_Arial.h"
+#include "font_DroidSans.h"
+#include "font_ComicSansMS.h"
+
 ArduinoLEDMatrixGFX display;
 const float on_percents[] = { 100.0, 75.0, 50.0, 25.0, 12.5, 25.0, 50.0, 75.0 };
 
@@ -19,7 +21,6 @@ void setup() {
 #else
   display.begin(10);
 #endif
-
   testPixels();  // Draw many lines
 
   Serial.print("Period Raw(100):"),
@@ -52,6 +53,8 @@ void setup() {
 #endif
 
   testfillrect();  // Draw rectangles (filled)
+  testILIFonts();
+
   testdrawchar();
   testdrawfontchar();
 }
@@ -160,7 +163,7 @@ void testfillrect(void) {
   display.clearDisplay();
   uint8_t color = MATRIX_WHITE;
   digitalWriteFast(4, HIGH);
-  for (int16_t i = 0; i < display.height() / 2; i += 3) {
+  for (int16_t i = 0; i < display.height() / 2; i += 2) {
     // The INVERSE color is used so rectangles alternate white/black
     display.fillRect(i, i, display.width() - i * 2, display.height() - i * 2, color);
     display.display();  // Update screen with each newly-drawn rectangle
@@ -197,8 +200,8 @@ void testdrawchar(void) {
 void testdrawfontchar(void) {
   display.clearDisplay();
 
-//  display.setFont(&FreeMono9pt7b);
- // display.setTextSize(1);              // Normal 1:1 pixel scale
+  //  display.setFont(&FreeMono9pt7b);
+  // display.setTextSize(1);              // Normal 1:1 pixel scale
   display.setILIFont(&Arial_8);
   display.setTextColor(MATRIX_WHITE);  // Draw white text
 
@@ -287,4 +290,39 @@ void writeOffsetRect(GFXcanvas8 &canvas, int x_offset, int y_offset) {
       }
     }
   }
+}
+
+void testILIFonts() {
+  //  display.setRotation(1);  // lets try doing this where we can display larger font
+  display.clearDisplay();
+
+  //  display.setFont(&FreeMono9pt7b);
+  // display.setTextSize(1);              // Normal 1:1 pixel scale
+  display.setTextColor(MATRIX_WHITE);  // Draw white text
+
+  for (uint8_t rot = 0; rot < 4; rot++) {
+    if (rot & 1) display.setILIFont(&Arial_10);
+    else display.setILIFont(&Arial_8);
+    Serial.print("Try rotation: ");
+    Serial.println(rot, DEC);
+    display.setRotation(rot);
+    Serial.println(display.getRotation(), DEC);
+
+    // Not all the characters will fit on the display. This is normal.
+    // Library will draw what it can and the rest will be clipped.
+    for (int16_t i = 'A'; i <= 'E'; i++) {
+      display.clearDisplay();
+      display.setCursor(0, 0);  // Start at top-left corner
+      display.setTextWrap(false);
+      display.write(i);
+      display.display();
+      delay(1000);
+    }
+    //Serial.println("Press any key to continue");
+    //while (Serial.read() == -1);
+    //while (Serial.read() != -1);
+  }
+  display.setILIFont(nullptr);
+  display.setRotation(0);  // lets try doing this where we can display larger font
+  //display.setFont();
 }
