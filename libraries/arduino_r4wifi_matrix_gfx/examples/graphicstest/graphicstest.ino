@@ -301,7 +301,7 @@ void testILIFonts() {
   display.setTextColor(MATRIX_WHITE);  // Draw white text
 
   for (uint8_t rot = 0; rot < 4; rot++) {
-    if (rot & 1) display.setILIFont(&Arial_10);
+    if (rot & 1) display.setILIFont(&Arial_9);
     else display.setILIFont(&Arial_8);
     Serial.print("Try rotation: ");
     Serial.println(rot, DEC);

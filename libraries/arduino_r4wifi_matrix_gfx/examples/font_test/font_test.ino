@@ -50,24 +50,26 @@ void test_draw_font_char(const ILI9341_t3_font_t *font, const char *name) {
   canvas.fillScreen(0);  // Clear canvas (not display)
 
   display.setTextColor(MATRIX_WHITE);  // Draw white text
-  display_scroll_char('<', MATRIX_WHITE);
+  display_scroll_char(font, '<', MATRIX_WHITE);
   while (*name) {
-    display_scroll_char(*name++, MATRIX_LIGHT);
+    display_scroll_char(font, *name++, MATRIX_LIGHT);
   }
-  display_scroll_char('>', MATRIX_WHITE);
-  display_scroll_char(' ', MATRIX_WHITE);
+  display_scroll_char(font, '>', MATRIX_WHITE);
+  display_scroll_char(font, ' ', MATRIX_WHITE);
 
   for (char i = ' '; i < '~'; i++) {
-    display_scroll_char(i, MATRIX_WHITE);
+    display_scroll_char(font, i, MATRIX_WHITE);
   }
   display.setILIFont(nullptr);
   //display.setFont();
 }
 
-void display_scroll_char(char ch, uint16_t color) {
+void display_scroll_char(const ILI9341_t3_font_t *font, char ch, uint16_t color) {
   canvas.setCursor(12, 0);
   canvas.setTextColor(color);
-  canvas.write(ch);
+  
+  drawILIFontChar(&canvas, font, false, color, ch);
+//  canvas.write(ch);
   int char_width = canvas.getCursorX() - 12;
   for (; char_width > 0; char_width -= 2) {
     ScrollCanvasLeft(canvas, 2, MATRIX_BLACK);

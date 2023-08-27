@@ -54,6 +54,10 @@
 
 #define MATRIX_INT_PER_PIXEL
 
+// Define a stand along function that can output a singlt ILIFont character
+size_t drawILIFontChar(Adafruit_GFX *gfx, const ILI9341_t3_font_t *ilifont, bool wrap, uint16_t textcolor, char c);
+
+
 class ArduinoLEDMatrixGFX : public Adafruit_GFX {
   public:
     // constructor
@@ -93,7 +97,6 @@ class ArduinoLEDMatrixGFX : public Adafruit_GFX {
 
     // See if we can overwrite the print write method
     virtual size_t write(uint8_t);
-    void drawFontBits(uint32_t bits, uint32_t numbits, uint32_t x, uint32_t y, uint32_t repeat);
 
 
 

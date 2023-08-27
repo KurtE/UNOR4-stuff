@@ -344,6 +344,42 @@ static uint32_t fetchbits_signed(const uint8_t *p, uint32_t index,
 size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
 
   if (!ilifont) return Adafruit_GFX::write(c);
+  return drawILIFontChar(this, ilifont, wrap, textcolor, c);  
+}
+
+//-----------------------------------------------------------------------------
+// Standalone version.
+static void drawILIFontBits(Adafruit_GFX *gfx, uint16_t textcolor, uint32_t bits, uint32_t numbits, uint32_t x, uint32_t y, uint32_t repeat)
+{
+  if (bits == 0) return;
+  uint32_t w;
+  bits <<= (32-numbits); // left align bits 
+  do {
+    w = __builtin_clz(bits); // skip over zeros
+    if (w > numbits) w = numbits;
+    numbits -= w;
+    x += w;
+    bits <<= w;
+    bits = ~bits; // invert to count 1s as 0s
+    w = __builtin_clz(bits);
+    if (w > numbits) w = numbits; 
+    numbits -= w;
+    bits <<= w;
+    bits = ~bits; // invert back to original polarity
+    if (w > 0) {
+      DBGPrintf("\t\tfillRect(%u, %u, %u, %u, %x\n", x, y, w, repeat, textcolor);
+      gfx->fillRect(x, y, w, repeat, textcolor);
+      x += w;
+    }
+  } while (numbits > 0);
+}
+
+
+
+
+size_t drawILIFontChar(Adafruit_GFX *gfx, const ILI9341_t3_font_t *ilifont, bool wrap, uint16_t textcolor, char c)
+{
+  if (!ilifont) return gfx->write(c);
 
     uint32_t bitoffset;
   const uint8_t *data;
@@ -380,16 +416,19 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
   bitoffset += ilifont->bits_delta;
   DBGPrintf("  delta =  %d\n", delta);
 
+  int16_t cursor_x = gfx->getCursorX();
+  int16_t cursor_y = gfx->getCursorY();
   DBGPrintf("  cursor = %d,%d\n", cursor_x, cursor_y);
 
   // horizontally, we draw every pixel, or none at all
   if (cursor_x < 0) cursor_x = 0;
+
   int32_t origin_x = cursor_x + xoffset;
   if (origin_x < 0) {
     cursor_x -= xoffset;
     origin_x = 0;
   }
-  if (origin_x + (int)width > _width) {
+  if (origin_x + (int)width > gfx->width()) {
     // I am going to allow partial characters to be output
     if (wrap) {
       origin_x = 0;
@@ -411,7 +450,7 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
 
   // TODO: compute top skip and number of lines
   int32_t linecount = height;
-  uint32_t loopcount = 0;
+  //uint32_t loopcount = 0;
   uint32_t y = origin_y;
   while (linecount) {
     DBGPrintf("    linecount = %d\n", linecount);
@@ -423,7 +462,7 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
         uint32_t xsize = width - x;
         if (xsize > 32) xsize = 32;
         uint32_t bits = fetchbits_unsigned(data, bitoffset, xsize);
-        drawFontBits(bits, xsize, origin_x + x, y, 1);
+        drawILIFontBits(gfx, textcolor, bits, xsize, origin_x + x, y, 1);
         bitoffset += xsize;
         x += xsize;
       } while (x < width);
@@ -438,7 +477,7 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
         if (xsize > 32) xsize = 32;
         DBGPrintf("    multi line %d\n", n);
         uint32_t bits = fetchbits_unsigned(data, bitoffset, xsize);
-        drawFontBits(bits, xsize, origin_x + x, y, n);
+        drawILIFontBits(gfx, textcolor, bits, xsize, origin_x + x, y, n);
         bitoffset += xsize;
         x += xsize;
       } while (x < width);
@@ -450,32 +489,10 @@ size_t ArduinoLEDMatrixGFX::write(uint8_t c) {
       //break;
     //}
   }
+  // update the GFX cursor.
+  gfx->setCursor(cursor_x, cursor_y);
   return 1;
-}
 
-void ArduinoLEDMatrixGFX::drawFontBits(uint32_t bits, uint32_t numbits, uint32_t x, uint32_t y, uint32_t repeat)
-{
-  if (bits == 0) return;
-  uint32_t w;
-  bits <<= (32-numbits); // left align bits 
-  do {
-    w = __builtin_clz(bits); // skip over zeros
-    if (w > numbits) w = numbits;
-    numbits -= w;
-    x += w;
-    bits <<= w;
-    bits = ~bits; // invert to count 1s as 0s
-    w = __builtin_clz(bits);
-    if (w > numbits) w = numbits; 
-    numbits -= w;
-    bits <<= w;
-    bits = ~bits; // invert back to original polarity
-    if (w > 0) {
-      DBGPrintf("\t\tfillRect(%u, %u, %u, %u, %x\n", x, y, w, repeat, textcolor);
-      fillRect(x, y, w, repeat, textcolor);
-      x += w;
-    }
-  } while (numbits > 0);
 }
 
 
