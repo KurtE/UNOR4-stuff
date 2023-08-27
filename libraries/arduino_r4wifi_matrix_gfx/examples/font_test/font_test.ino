@@ -27,6 +27,8 @@ void setup() {
 }
 
 void loop() {
+  test_draw_font_char(nullptr, "built-in");
+  nextPage();
   test_draw_font_char(&Chancery_9_Italic, "Chancery_9_Italic");
   nextPage();
   test_draw_font_char(&DroidSans_8, "DroidSans_8");
@@ -39,7 +41,7 @@ void loop() {
   nextPage();
 }
 
-GFXcanvas1 canvas(24, 8);  // 1-bit, 80x8 pixels
+GFXcanvas8 canvas(24, 8);  // 1-bit, 80x8 pixels
 
 void test_draw_font_char(const ILI9341_t3_font_t *font, const char *name) {
   Serial.println(name);
@@ -48,22 +50,23 @@ void test_draw_font_char(const ILI9341_t3_font_t *font, const char *name) {
   canvas.fillScreen(0);  // Clear canvas (not display)
 
   display.setTextColor(MATRIX_WHITE);  // Draw white text
-  display_scroll_char('<');
+  display_scroll_char('<', MATRIX_WHITE);
   while (*name) {
-    display_scroll_char(*name++);
+    display_scroll_char(*name++, MATRIX_LIGHT);
   }
-  display_scroll_char('>');
-  display_scroll_char(' ');
+  display_scroll_char('>', MATRIX_WHITE);
+  display_scroll_char(' ', MATRIX_WHITE);
 
   for (char i = ' '; i < '~'; i++) {
-    display_scroll_char(i);
+    display_scroll_char(i, MATRIX_WHITE);
   }
   display.setILIFont(nullptr);
   //display.setFont();
 }
 
-void display_scroll_char(char ch) {
+void display_scroll_char(char ch, uint16_t color) {
   canvas.setCursor(12, 0);
+  canvas.setTextColor(color);
   canvas.write(ch);
   int char_width = canvas.getCursorX() - 12;
   for (; char_width > 0; char_width -= 2) {
@@ -74,7 +77,7 @@ void display_scroll_char(char ch) {
   }
 }
 
-void ScrollCanvasLeft(GFXcanvas1 &canvas, int scroll_count, uint16_t color_fill) {
+void ScrollCanvasLeft(GFXcanvas8 &canvas, int scroll_count, uint16_t color_fill) {
   int x;
   for (x = 0; x < (canvas.width() - scroll_count); x++) {
     for (int y = 0; y < 8; y++) {
@@ -85,13 +88,13 @@ void ScrollCanvasLeft(GFXcanvas1 &canvas, int scroll_count, uint16_t color_fill)
 }
 
 
-void writeOffsetRect(GFXcanvas1 &canvas, int x_offset, int y_offset) {
+void writeOffsetRect(GFXcanvas8 &canvas, int x_offset, int y_offset) {
   display.clearDisplay();
   for (int y = 0; y < 8; y++) {
     for (int x = 0; x < 12; x++) {
       uint8_t color;
       if ((color = canvas.getPixel(x + x_offset, y + y_offset))) {
-        display.drawPixel(x, y, MATRIX_WHITE);
+        display.drawPixel(x, y, color);
       }
     }
   }
@@ -116,6 +119,10 @@ void nextPage() {
     if (ch == '$') {
       pause_between_pages = true;
       Serial.println("*** Pausing between pages enabled ***");
+      while (Serial.read() != -1)
+        ;
+      while ((ch = Serial.read()) == -1)
+        ;
     }
     while (Serial.read() != -1)
       ;
