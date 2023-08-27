@@ -30,7 +30,13 @@
 #ifndef _arduino_r4wifi_matrix_gfx_h_
 #define _arduino_r4wifi_matrix_gfx_h_
 #include "FspTimer.h"
+
+// Uncomment if you want to enable the digital pins for debug
+//#define R4MATRIX_DEBUG_PINS
+#ifdef R4MATRIX_DEBUG_PINS
 #include "UNOR4_digitalWriteFast.h"
+#endif
+
 #include <Adafruit_GFX.h>
 #include "ILI9341_fonts.h"
 #define MATRIX_BLACK  0   ///< Draw 'off' pixels
@@ -93,7 +99,9 @@ class ArduinoLEDMatrixGFX : public Adafruit_GFX {
 
     void setPulseOnPercent(float on_percent) {
         _new_period_on_percent = on_percent; 
+        #ifdef R4MATRIX_DEBUG_PINS
         digitalToggleFast(4);
+        #endif
     }
 
     static inline void updateClockPeriod(uint32_t period);

@@ -26,6 +26,7 @@
 #include "arduino_r4wifi_matrix_gfx.h"
 
 //#define DEBUG_PRINT
+
 #ifdef DEBUG_PRINT
 #define DBGPrintf printf
 #else
@@ -221,13 +222,13 @@ void ArduinoLEDMatrixGFX::drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_
       x = MATRIX_WIDTH - x - 1;
       break;
     case 2:
-      x = MATRIX_WIDTH - x - 1;
+      x = MATRIX_WIDTH - (x+w);
       y = MATRIX_HEIGHT - y - 1;
       break;
     case 3:
       swap(x, y);
       swapped = true;
-      y = MATRIX_HEIGHT - y - 1;
+      y = MATRIX_HEIGHT - (y + w);
       break;
   }
 
@@ -486,7 +487,9 @@ void ArduinoLEDMatrixGFX::led_timer_callback(timer_callback_args_t *arg) {
     if (arg == nullptr || arg->p_context == nullptr) return; // ???
 
     // turn all of the pins to input.
+    #ifdef R4MATRIX_DEBUG_PINS
     digitalWriteFast(3, LOW); 
+    #endif
     R_PORT0->PCNTR1 &= ~((uint32_t) LED_MATRIX_PORT0_MASK);
     R_PORT2->PCNTR1 &= ~((uint32_t) LED_MATRIX_PORT2_MASK);
 #ifdef MATRIX_INT_PER_PIXEL
@@ -502,7 +505,9 @@ void ArduinoLEDMatrixGFX::led_timer_callback(timer_callback_args_t *arg) {
     uint32_t lastRawPeriodOn = s_rawPeriodOn; 
 
     if (pixel_color != 0) {
+      #ifdef R4MATRIX_DEBUG_PINS
       digitalWriteFast(3, HIGH); 
+      #endif
       *matrix_pin_pmnpfs[pins[i_isr][0]] = IOPORT_CFG_PORT_DIRECTION_OUTPUT | IOPORT_CFG_PORT_OUTPUT_HIGH;
       *matrix_pin_pmnpfs[pins[i_isr][1]] = IOPORT_CFG_PORT_DIRECTION_OUTPUT | IOPORT_CFG_PORT_OUTPUT_LOW;
       switch (pixel_color) {
@@ -537,7 +542,9 @@ void ArduinoLEDMatrixGFX::led_timer_callback(timer_callback_args_t *arg) {
         if (first_on) {
           *matrix_pin_pmnpfs[s_high_pin_index] = IOPORT_CFG_PORT_DIRECTION_OUTPUT | IOPORT_CFG_PORT_OUTPUT_HIGH;
           first_on = false;
+         #ifdef R4MATRIX_DEBUG_PINS
          digitalWriteFast(3, HIGH); 
+         #endif
         }
         *matrix_pin_pmnpfs[pins[led][1]] = IOPORT_CFG_PORT_DIRECTION_OUTPUT | IOPORT_CFG_PORT_OUTPUT_LOW;
       }

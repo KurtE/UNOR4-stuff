@@ -147,7 +147,7 @@ void testdrawline() {
 
 void testdrawrect(uint8_t color) {
   display.clearDisplay();
-  digitalWriteFast(4, HIGH);
+  digitalWrite(4, HIGH);
 
   for (int16_t i = 0; i < display.height() / 2; i += 2) {
     display.drawRect(i, i, display.width() - 2 * i, display.height() - 2 * i, color);
@@ -156,13 +156,13 @@ void testdrawrect(uint8_t color) {
   }
 
   delay(2000);
-  digitalWriteFast(4, LOW);
+  digitalWrite(4, LOW);
 }
 
 void testfillrect(void) {
   display.clearDisplay();
   uint8_t color = MATRIX_WHITE;
-  digitalWriteFast(4, HIGH);
+  digitalWrite(4, HIGH);
   for (int16_t i = 0; i < display.height() / 2; i += 2) {
     // The INVERSE color is used so rectangles alternate white/black
     display.fillRect(i, i, display.width() - i * 2, display.height() - i * 2, color);
@@ -172,7 +172,7 @@ void testfillrect(void) {
   }
 
   delay(2000);
-  digitalWriteFast(4, LOW);
+  digitalWrite(4, LOW);
 }
 
 void testdrawchar(void) {
