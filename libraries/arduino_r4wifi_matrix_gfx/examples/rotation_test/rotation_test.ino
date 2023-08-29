@@ -16,7 +16,7 @@ void setup() {
 #ifdef MATRIX_INT_PER_PIXEL
   display.begin(1);
 #else
-  display.begin(10);
+  display.begin(5);
 #endif
 }
 
@@ -35,6 +35,9 @@ void loop() {
   display.setCursor((display.width() - w) / 2, (display.height() - h) / 2);
   display.setTextColor(MATRIX_WHITE);
   display.print(rot_str);
+  print_display_info();
+  Serial.flush();
+  step();
   display.display();
   step();
 
@@ -69,4 +72,25 @@ void step() {
     ;
   while (Serial.read() != -1)
     ;
+}
+
+
+void print_display_info() {
+  for (int i = 0; i < 11; i++) {
+    Serial.print(i, DEC);
+    for (int j = 0; j < 10; j++) {
+      int8_t pin = ArduinoLEDMatrixGFX::matrix_irq_pins[i][j];
+      if (pin == -1) break;
+      uint8_t y = pin / 12;
+      uint8_t x = pin - y * 12;
+      uint16_t color = display.getPixel(x, y);
+      if (color) {
+        Serial.print(" ");
+        Serial.print(pin);
+        Serial.print(":");
+        Serial.print(color, DEC);
+      }
+    }
+    Serial.println();
+  }
 }

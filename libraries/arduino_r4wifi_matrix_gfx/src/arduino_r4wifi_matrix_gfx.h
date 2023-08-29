@@ -52,7 +52,7 @@
 #define WHITE MATRIX_WHITE     ///< Draw 'on' pixels
 #endif
 
-#define MATRIX_INT_PER_PIXEL
+//#define MATRIX_INT_PER_PIXEL
 
 // Define a stand along function that can output a singlt ILIFont character
 size_t drawILIFontChar(Adafruit_GFX *gfx, const ILI9341_t3_font_t *ilifont, bool wrap, uint16_t textcolor, char c);
@@ -75,6 +75,9 @@ class ArduinoLEDMatrixGFX : public Adafruit_GFX {
     // Update the screen from the current frame buffer
     void display();
 
+    // Get the current frame index.
+    uint32_t frameIndex() {return s_frame_index;}
+
     // virtual overrides - draw pixel to frame buffer
     virtual  void drawPixel(int16_t x, int16_t y, uint16_t color);
 
@@ -88,6 +91,7 @@ class ArduinoLEDMatrixGFX : public Adafruit_GFX {
 
     void hline(int16_t x, int16_t y, int16_t w, uint16_t color);
     void vline(int16_t x, int16_t y, int16_t h, uint16_t color);
+
 
 
     // Experiment use ILI Fonts
@@ -112,6 +116,8 @@ class ArduinoLEDMatrixGFX : public Adafruit_GFX {
 
     inline void pixel(uint8_t pixel_index, uint16_t color);
     static uint16_t pixelDisp(uint8_t pixel_index);
+    uint16_t getPixel(int16_t x, int16_t y);
+
 
     // Some of this should be protectdd or private:
     enum {NUM_LEDS=96, BITS_PER_PIXEL=2, COLOR_MASK = 0x3};
@@ -125,18 +131,20 @@ class ArduinoLEDMatrixGFX : public Adafruit_GFX {
 
     static uint8_t __attribute__((aligned)) s_framebuffer[(NUM_LEDS * BITS_PER_PIXEL) / 8];
     static uint8_t s_high_pin_index;
-    static bool s_turn_off_pulse;
+    static uint8_t s_turn_off_pulse_color;
 
     static FspTimer s_ledTimer;
-    static uint32_t s_rawPeriod;
-    static uint32_t s_rawPeriod1;
-    static uint32_t s_rawPeriod2;
+    static uint32_t s_rawPeriods[4];
     static volatile uint32_t s_rawPeriodOn;
     static volatile uint32_t s_rawPeriodOff;
+    static volatile uint32_t s_frame_index;
     static R_GPT0_Type *s_pgpt0;
 
     // Font stuff
     const ILI9341_t3_font_t *ilifont = nullptr;
+
+    static const int8_t matrix_irq_pins[11][10];
+
 };
 
 #endif

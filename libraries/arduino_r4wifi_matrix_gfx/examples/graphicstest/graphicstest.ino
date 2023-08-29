@@ -29,7 +29,7 @@ void setup() {
   testdrawline();
 
   testdrawrect(MATRIX_WHITE);  // Draw rectangles (outlines)
-#ifdef MATRIX_INT_PER_PIXEL
+#if 1 //def MATRIX_INT_PER_PIXEL
 
   testdrawrect(MATRIX_LIGHT);  // Draw rectangles (outlines)
   testdrawrect(MATRIX_DARK);   // Draw rectangles (outlines)
@@ -43,7 +43,7 @@ void setup() {
     Serial.print("On Percent: ");
     Serial.println(on_percents[i], 2);
     Serial.print("\tPeriod: ");
-    Serial.print(display.s_rawPeriod);
+    Serial.print(display.s_rawPeriods[0]);
     Serial.print(" On:");
     Serial.print(display.s_rawPeriodOn);
     Serial.print(" Off:");
@@ -67,7 +67,7 @@ void loop() {
   Serial.println(on_percents[loop_count & 0x7], 2);
   testcanvasscrolltext();
   Serial.print("\tPeriod: ");
-  Serial.print(display.s_rawPeriod);
+  Serial.print(display.s_rawPeriods[0]);
   Serial.print(" On:");
   Serial.print(display.s_rawPeriodOn);
   Serial.print(" Off:");

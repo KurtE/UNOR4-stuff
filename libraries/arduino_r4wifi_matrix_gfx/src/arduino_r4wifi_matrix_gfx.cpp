@@ -62,7 +62,7 @@ static uint32_t volatile * const matrix_pin_pmnpfs[] = {
 };
 
 
-/*static*/ const int8_t matrix_irq_pins[11][10] = {
+const int8_t ArduinoLEDMatrixGFX::matrix_irq_pins[11][10] = {
 {50/*01*/, 64/*02*/, 15/*03*/, 17/*04*/, 38/*05*/ , 28/*06*/, 13/*07*/, 19/*08*/, 80/*10*/, -1},    // high 0
 {51/*00*/, 70/*02*/, 45/*03*/, 47/*04*/, 55/*05*/, 53/*06*/, 43/*07*/, 49/*08*/, 86/*10*/, -1},     // High 1
 {65/*00*/, 71/*01*/, 59/*03*/, 61/*04*/, 69/*05*/, 67/*06*/, 57/*07*/, 63/*08*/, 88/*10*/, -1},     // High 2
@@ -85,13 +85,12 @@ static uint32_t volatile * const matrix_pin_pmnpfs[] = {
 //=============================================================================
 FspTimer ArduinoLEDMatrixGFX::s_ledTimer;
 uint8_t __attribute__((aligned)) ArduinoLEDMatrixGFX::s_framebuffer[(NUM_LEDS * BITS_PER_PIXEL) / 8];
-uint8_t ArduinoLEDMatrixGFX::s_high_pin_index = 0;
-bool ArduinoLEDMatrixGFX::s_turn_off_pulse = false;
-uint32_t ArduinoLEDMatrixGFX::s_rawPeriod = 0;
-uint32_t ArduinoLEDMatrixGFX::s_rawPeriod1 = 0;
-uint32_t ArduinoLEDMatrixGFX::s_rawPeriod2 = 0;
+uint8_t ArduinoLEDMatrixGFX::s_high_pin_index = 0xff;
+uint8_t ArduinoLEDMatrixGFX::s_turn_off_pulse_color = 0;
+uint32_t ArduinoLEDMatrixGFX::s_rawPeriods[4] = {0, 0, 0, 0};
 volatile uint32_t ArduinoLEDMatrixGFX::s_rawPeriodOn = 0;
 volatile uint32_t ArduinoLEDMatrixGFX::s_rawPeriodOff = 0;
+volatile uint32_t ArduinoLEDMatrixGFX::s_frame_index = 0;
 R_GPT0_Type *ArduinoLEDMatrixGFX::s_pgpt0 = nullptr;
 
 
@@ -117,6 +116,9 @@ bool ArduinoLEDMatrixGFX::begin(uint32_t frames_per_second) {
   uint32_t frequency = frames_per_second * 11;
 #endif
 
+  R_PORT0->PCNTR1 &= ~((uint32_t) LED_MATRIX_PORT0_MASK);
+  R_PORT2->PCNTR1 &= ~((uint32_t) LED_MATRIX_PORT2_MASK);
+  
   _pulseWidth =  1000000.0 / frequency;
   Serial.print("Freq: ");
   Serial.print(frequency, DEC);
@@ -141,13 +143,14 @@ bool ArduinoLEDMatrixGFX::begin(uint32_t frames_per_second) {
   s_ledTimer.start();
 
   // Now lets see what the period;
-  s_rawPeriod = s_ledTimer.get_period_raw();
+  s_rawPeriods[0] = s_ledTimer.get_period_raw();
   Serial.print("Period:");
-  Serial.println(s_rawPeriod, DEC);
+  Serial.println(s_rawPeriods[0], DEC);
 
-  s_rawPeriodOn = s_rawPeriod;
-  s_rawPeriod1 = s_rawPeriod / 8;
-  s_rawPeriod2 = s_rawPeriod / 4;
+  s_rawPeriodOn = s_rawPeriods[0];
+  s_rawPeriods[1] = s_rawPeriods[0] / 8;
+  s_rawPeriods[2] = s_rawPeriods[0] / 4;
+  s_rawPeriods[3] = s_rawPeriods[0];  // duplicate of 0
   s_rawPeriodOff = 0;
   return true;
 }
@@ -176,6 +179,14 @@ uint16_t ArduinoLEDMatrixGFX::pixelDisp(uint8_t pixel_index) {
   uint8_t byte_index = pixel_index >> 2;
   uint8_t shift = (pixel_index & 0x3) * 2;
   return (s_framebuffer[byte_index] >> shift) & COLOR_MASK;
+}
+
+
+uint16_t ArduinoLEDMatrixGFX::getPixel(int16_t x, int16_t y) {
+  uint16_t pixel_index = y * MATRIX_WIDTH + x;
+  uint8_t byte_index = pixel_index >> 2;
+  uint8_t shift = (pixel_index & 0x3) * 2;
+  return (_frame_buffer[byte_index] >> shift) & COLOR_MASK;
 }
 
 
@@ -498,8 +509,9 @@ size_t drawILIFontChar(Adafruit_GFX *gfx, const ILI9341_t3_font_t *ilifont, bool
 
 
 //=================================================================================
-// Timer ISR Callback from 
+// Timer ISR Callback - one pixel and a timer version. 
 //=================================================================================
+#ifdef MATRIX_INT_PER_PIXEL
 void ArduinoLEDMatrixGFX::led_timer_callback(timer_callback_args_t *arg) {
     if (arg == nullptr || arg->p_context == nullptr) return; // ???
 
@@ -509,7 +521,6 @@ void ArduinoLEDMatrixGFX::led_timer_callback(timer_callback_args_t *arg) {
     #endif
     R_PORT0->PCNTR1 &= ~((uint32_t) LED_MATRIX_PORT0_MASK);
     R_PORT2->PCNTR1 &= ~((uint32_t) LED_MATRIX_PORT2_MASK);
-#ifdef MATRIX_INT_PER_PIXEL
     static volatile int i_isr = 0;
     // See if 
     if (s_rawPeriodOff) {
@@ -528,79 +539,111 @@ void ArduinoLEDMatrixGFX::led_timer_callback(timer_callback_args_t *arg) {
       *matrix_pin_pmnpfs[pins[i_isr][0]] = IOPORT_CFG_PORT_DIRECTION_OUTPUT | IOPORT_CFG_PORT_OUTPUT_HIGH;
       *matrix_pin_pmnpfs[pins[i_isr][1]] = IOPORT_CFG_PORT_DIRECTION_OUTPUT | IOPORT_CFG_PORT_OUTPUT_LOW;
       switch (pixel_color) {
-        default: s_rawPeriodOn = s_rawPeriod; break;
-        case 1: s_rawPeriodOn = s_rawPeriod1; break;
-        case 2: s_rawPeriodOn = s_rawPeriod2; break;  
+        default: s_rawPeriodOn = s_rawPeriods[0]; break;
+        case 1: s_rawPeriodOn = s_rawPeriods[1]; break;
+        case 2: s_rawPeriodOn = s_rawPeriods[2]; break;  
       }
     } else {
-      s_rawPeriodOn = s_rawPeriod;
+      s_rawPeriodOn = s_rawPeriods[0];
     }
 
-    if ((s_rawPeriodOn != s_rawPeriod) || (lastRawPeriodOn != s_rawPeriod)) {
+    if ((s_rawPeriodOn != s_rawPeriods[0]) || (lastRawPeriodOn != s_rawPeriods[0])) {
        updateClockPeriod(s_rawPeriodOn); // how long it will off
     }
-    s_rawPeriodOff = s_rawPeriod - s_rawPeriodOn;
+    s_rawPeriodOff = s_rawPeriods[0] - s_rawPeriodOn;
     i_isr = (i_isr + 1) % NUM_LEDS;
 
+}
 #else
-    ArduinoLEDMatrixGFX* _m   = (ArduinoLEDMatrixGFX*)arg->p_context;
-    if (s_turn_off_pulse) {
-        // only pupose was to turn off the leds
-        updateClockPeriod(s_rawPeriodOff); // how long it will off
-        s_turn_off_pulse = false;
-        return;
-    }        
+//=================================================================================
+// Timer ISR Callback - Process all leds associated with HIGH pin in one pass
+//=================================================================================
+void ArduinoLEDMatrixGFX::led_timer_callback(timer_callback_args_t *arg) {
+    if (arg == nullptr || arg->p_context == nullptr) return; // ???
 
-    bool first_on = true;
+    // turn all of the pins to input.
+    #ifdef R4MATRIX_DEBUG_PINS
+    digitalWriteFast(3, LOW); 
+    #endif
+
+
+    //ArduinoLEDMatrixGFX* _m   = (ArduinoLEDMatrixGFX*)arg->p_context;
+
+    //-------------------------------------------------------------
+    // This gets a little more complex 
+    // as we may be turning off leds through a set of interrupts.
+    //-------------------------------------------------------------
+    //R_PORT0->PCNTR1 &= ~((uint32_t) LED_MATRIX_PORT0_MASK);
+    //R_PORT2->PCNTR1 &= ~((uint32_t) LED_MATRIX_PORT2_MASK);
+    //Serial.print(s_high_pin_index, DEC); Serial.print(" ");
+    //Serial.print(s_turn_off_pulse_color, DEC);
+    //Serial.println();
+
+    if (s_turn_off_pulse_color && (s_high_pin_index < 11)) {
+      uint8_t next_off_color = 0x4;
+      for (uint8_t i = 0; i < 10; i++) {
+        uint8_t led = matrix_irq_pins[s_high_pin_index][i];
+        if (led == (uint8_t)-1) break;
+        uint8_t pixel_color = pixelDisp(led);
+        if (pixel_color == s_turn_off_pulse_color) {
+          // turn the pin back to input.
+          *matrix_pin_pmnpfs[pins[led][1]] = IOPORT_CFG_PORT_DIRECTION_INPUT;
+        } else if ((pixel_color > s_turn_off_pulse_color) && (pixel_color < next_off_color)) {
+          next_off_color = pixel_color;
+        }
+      }
+      if (next_off_color == 0x4) {
+        // We can turn off the high pin now...
+        *matrix_pin_pmnpfs[s_high_pin_index] = IOPORT_CFG_PORT_DIRECTION_INPUT;
+      }
+      if (s_turn_off_pulse_color < 0x3) {
+        // need to compute the next timer setting.
+        if ((s_turn_off_pulse_color == 1) && (next_off_color == 2)) {
+          updateClockPeriod(s_rawPeriods[2] - s_rawPeriods[1]);
+        } else {
+          updateClockPeriod(s_rawPeriods[0] - s_rawPeriods[s_turn_off_pulse_color]);
+        }
+        s_turn_off_pulse_color = next_off_color;
+        return;
+      }
+
+    }
+
+    //-------------------------------------------------------------
+    // Now lets get to the next HIGH pin and see if we have any
+    // LEDS to turn on.
+    //-------------------------------------------------------------
+    s_high_pin_index++;
+    if (s_high_pin_index >= 11) {
+      s_high_pin_index = 0;
+
+      s_frame_index++; 
+    }  
+
+    s_turn_off_pulse_color = 4;
     for (uint8_t i = 0; i < 10; i++) {
       uint8_t led = matrix_irq_pins[s_high_pin_index][i];
       if (led == (uint8_t)-1) break;
-      if (pixelDisp(led) != 0) {
-        if (first_on) {
+
+      uint8_t pixel_color = pixelDisp(led);
+      if (pixel_color) {
+        if (s_turn_off_pulse_color == 4) {
           *matrix_pin_pmnpfs[s_high_pin_index] = IOPORT_CFG_PORT_DIRECTION_OUTPUT | IOPORT_CFG_PORT_OUTPUT_HIGH;
-          first_on = false;
          #ifdef R4MATRIX_DEBUG_PINS
          digitalWriteFast(3, HIGH); 
          #endif
         }
         *matrix_pin_pmnpfs[pins[led][1]] = IOPORT_CFG_PORT_DIRECTION_OUTPUT | IOPORT_CFG_PORT_OUTPUT_LOW;
+        if (pixel_color < s_turn_off_pulse_color) s_turn_off_pulse_color = pixel_color;
       }
     }
-    if (s_rawPeriodOff) {
-        if (!first_on) {
-            updateClockPeriod(s_rawPeriodOn); // Setup for how long the LED should be on
-            s_turn_off_pulse = true;
 
-        } else {
-            updateClockPeriod(s_rawPeriod); // no pins activated so wait full pulse width            
-        }
+    // Update the clock.
+    if (s_turn_off_pulse_color == 4) {
+      s_turn_off_pulse_color = 0;  // don't need to do anything as we did not turn anything on
     }
-    s_high_pin_index++;
-    if (s_high_pin_index == 11) {
-        s_high_pin_index = 0;
-        if (_m->_new_period_on_percent != 0.0) {
-            if (_m->_new_period_on_percent  > 99.9) {
-                s_rawPeriodOn = s_rawPeriod;
-                s_rawPeriodOff = 0;                    
-                updateClockPeriod(s_rawPeriod); // how long it will off
-            } else {
-                s_rawPeriodOn = (float)s_rawPeriod * _m->_new_period_on_percent / 100.0;
-                // make sure there is at least some on time... 
-                constrain(s_rawPeriodOn, 32, s_rawPeriod);
-                s_rawPeriodOff = s_rawPeriod - s_rawPeriodOn;
-                updateClockPeriod(s_rawPeriodOn); // how long it will off
-                s_turn_off_pulse = true; 
-            }
-            //Serial.print("NP: ");
-            //Serial.print(_m->_new_period_on_percent, 2);
-            //Serial.print(" On:");
-            //Serial.print(s_rawPeriodOn);
-            //Serial.print(" Off:");
-            //Serial.println(s_rawPeriodOff);
-            _m->_new_period_on_percent = 0.0;
-        }
-    }
-#endif
+    updateClockPeriod(s_rawPeriods[s_turn_off_pulse_color]);
 }
+#endif
 
 
