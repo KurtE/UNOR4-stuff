@@ -48,4 +48,13 @@ static inline void digitalToggleFast(pin_size_t pin) {
   if (portX->PODR & pin_mask) portX->PORR = pin_mask;
   else portX->POSR = pin_mask;
 }
+
+static inline uint16_t digitalReadFast(pin_size_t pin) {
+  uint16_t hardware_port_pin = g_pin_cfg[pin].pin;
+  uint16_t pin_mask = mask_table[hardware_port_pin & 0xf];
+  R_PORT0_Type *portX = port_table[hardware_port_pin >> 8];
+
+  return (portX->PIDR & pin_mask);
+}
+
 #endif
