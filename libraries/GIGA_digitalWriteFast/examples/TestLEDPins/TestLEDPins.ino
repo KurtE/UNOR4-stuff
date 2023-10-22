@@ -1,20 +1,37 @@
+#include <RPC.h>
 #include <GIGA_digitalWriteFast.h>
+
+Stream *USERIAL = nullptr;
 
 void setup() {
   // put your setup code here, to run once:
-  while (!Serial && millis() < 5000) {}
-  Serial.begin(115200);
+  if (HAL_GetCurrentCPUID() == CM7_CPUID) {
+
+    while (!Serial && millis() < 5000) {}
+    Serial.begin(115200);
+    Serial.println("\n*** Test Led Pins M7 version ***");
+    USERIAL = &Serial;
+  } else {
+    RPC.begin();
+    USERIAL = &RPC;
+    USERIAL->println("\n*** Test Led Pins M4 version ***");
+  }
 
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(LED_BLUE, OUTPUT);
   pinMode(LED_GREEN, OUTPUT);
   pinMode(LED_RED, OUTPUT);
+  pinMode(86, OUTPUT);
+  pinMode(87, OUTPUT);
+  pinMode(88, OUTPUT);
 }
 
 void test_pin(const char *name, pin_size_t pin) {
-  Serial.print("Test Pin by number: ");
-  Serial.println(name);
-
+  USERIAL->print("Test Pin by number: ");
+  USERIAL->print(name);
+  USERIAL->print("(");
+  USERIAL->print(pin, DEC);
+  USERIAL->println(")");
   for (uint8_t i = 0; i < 2; i++) {
     digitalWriteFast(pin, HIGH);
     delay(250);
@@ -29,8 +46,11 @@ void test_pin(const char *name, pin_size_t pin) {
 }
 
 void test_pin(const char *name, PinName pin) {
-  Serial.print("Test Pin by name: ");
-  Serial.println(name);
+  USERIAL->print("Test Pin by name: ");
+  USERIAL->print(name);
+  USERIAL->print("(");
+  USERIAL->print(pin, DEC);
+  USERIAL->println(")");
 
   for (uint8_t i = 0; i < 2; i++) {
     digitalWriteFast(pin, HIGH);
