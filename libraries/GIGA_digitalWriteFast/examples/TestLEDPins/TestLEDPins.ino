@@ -50,6 +50,12 @@ void test_pin(const char *name, PinName pin) {
   USERIAL->print(name);
   USERIAL->print("(");
   USERIAL->print(pin, DEC);
+  USERIAL->print(" P");
+  uint8_t port_name = ((pin >> 4) & 0xf) + 'A';
+  USERIAL->write(port_name);
+  USERIAL->write('_');
+  USERIAL->print(pin & 0xf, DEC);
+
   USERIAL->println(")");
 
   for (uint8_t i = 0; i < 2; i++) {
@@ -78,5 +84,8 @@ void loop() {
   test_pin("D86", D86);
   test_pin("D87", D87);
   test_pin("D88", D88);
+  test_pin("PI_12", PI_12);  // RED
+  test_pin("PJ_13", PJ_13);
+  test_pin("PE_3", PE_3);
 
 }
