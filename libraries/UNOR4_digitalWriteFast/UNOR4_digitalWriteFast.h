@@ -27,7 +27,7 @@
 #ifndef _UNOR4_DIGITALWRITEFAST_H_
 #define _UNOR4_DIGITALWRITEFAST_H_
 #include <Arduino.h>
-static R_PORT0_Type *port_table[] = { R_PORT0, R_PORT1, R_PORT2, R_PORT3, R_PORT4, R_PORT5, R_PORT6, R_PORT7 };
+static R_PORT0_Type * const port_table[] = { R_PORT0, R_PORT1, R_PORT2, R_PORT3, R_PORT4, R_PORT5, R_PORT6, R_PORT7 };
 static const uint16_t mask_table[] = { 1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7,
                                        1 << 8, 1 << 9, 1 << 10, 1 << 11, 1 << 12, 1 << 13, 1 << 14, 1 << 15 };
 // quick and dirty digitalWriteFast
@@ -35,7 +35,7 @@ static inline void digitalWriteFast(pin_size_t pin, PinStatus val) {
   uint16_t hardware_port_pin = g_pin_cfg[pin].pin;
   //uint16_t mask = 1 << (hardware_port_pin & 0xf);
   uint16_t pin_mask = mask_table[hardware_port_pin & 0xf];
-  R_PORT0_Type *portX = port_table[hardware_port_pin >> 8];
+  R_PORT0_Type * const portX = port_table[hardware_port_pin >> 8];
 
   if (val) portX->POSR = pin_mask;
   else portX->PORR = pin_mask;
@@ -43,7 +43,7 @@ static inline void digitalWriteFast(pin_size_t pin, PinStatus val) {
 static inline void digitalToggleFast(pin_size_t pin) {
   uint16_t hardware_port_pin = g_pin_cfg[pin].pin;
   uint16_t pin_mask = mask_table[hardware_port_pin & 0xf];
-  R_PORT0_Type *portX = port_table[hardware_port_pin >> 8];
+  R_PORT0_Type * const portX = port_table[hardware_port_pin >> 8];
 
   if (portX->PODR & pin_mask) portX->PORR = pin_mask;
   else portX->POSR = pin_mask;
@@ -52,7 +52,7 @@ static inline void digitalToggleFast(pin_size_t pin) {
 static inline uint16_t digitalReadFast(pin_size_t pin) {
   uint16_t hardware_port_pin = g_pin_cfg[pin].pin;
   uint16_t pin_mask = mask_table[hardware_port_pin & 0xf];
-  R_PORT0_Type *portX = port_table[hardware_port_pin >> 8];
+  R_PORT0_Type * const portX = port_table[hardware_port_pin >> 8];
 
   return (portX->PIDR & pin_mask);
 }

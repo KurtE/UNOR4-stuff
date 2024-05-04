@@ -28,8 +28,9 @@
 #define _GIGA_DIGITALWRITEFAST_H_
 #include <Arduino.h>
 #include "pinDefinitions.h"
-#if !defined(ARDUINO_GIGA)
-#error "Only works on Arduino GIGA boards"
+#if !defined(ARDUINO_GIGA) && !defined(ARDUINO_PORTENTA_H7_M7)
+
+#error "Only works on Arduino GIGA or Portenta H7 boards"
 #endif
 
 
