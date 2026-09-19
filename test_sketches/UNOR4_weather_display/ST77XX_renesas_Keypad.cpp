@@ -47,6 +47,7 @@ Keyboard::Keyboard(ST77XX_renesas *Display, touch_dev *Touch) {
   d = Display;
   t = Touch;
 }
+
 void Keyboard::init(uint16_t BackColor, uint16_t TextColor, uint16_t ButtonColor, uint16_t BorderColor, uint16_t PressedTextColor, 
               uint16_t PressedButtonColor, uint16_t PressedBorderColor, const ILI9341_t3_font_t &ButtonFont) {
   kcolor = BackColor;

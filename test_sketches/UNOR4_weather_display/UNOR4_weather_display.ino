@@ -1,3 +1,4 @@
+
 #define USE_COMPRESSED_IMAGE
 struct image_info {
   const void *image;
@@ -7,7 +8,7 @@ struct image_info {
 };
 
 //#define ILI488_DISP
-//#define XPT_TOUCH  //else FT6236
+#define XPT_TOUCH  //else FT6236
 #define USE_TOUCH
 #define USE_KEYBOARD
 //#define printForecast
@@ -169,7 +170,9 @@ void setup() {
   while (!Serial && millis() < 5000) {}
   tft.begin(320, 480);
   //tft.init(320, 480, 0, 0, ST7796S_RGB);
+#if !defined(XPT_TOUCH)
   tft.invertDisplay(true);       //black display
+#endif  
   tft.setRotation(orientation);  // Landscape (480x320)
                                  //  tft.setOrigin(0,0);
   tft.fillScreen(COLOR_BG);
